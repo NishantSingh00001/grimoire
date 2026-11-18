@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire — Decode Any Link</title>
+<meta name="description" content="Paste a GitHub repo or website link and get an AI-reasoned explainer: what it is, how it was built, how it works, with architecture and flow diagrams — in deep technical language or in plain words.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500;1,9..144,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-mode="magic">
+<canvas id="bg"></canvas>
+
+<div class="shell">
+
+  <header class="top">
+    <div class="brand">
+      <a href="#home" class="brand-link">
+        <svg class="mark" viewBox="0 0 48 48" fill="none">
+          <path d="M24 4 L41 13 V33 L24 44 L7 33 V13 Z" stroke="var(--accent)" stroke-width="1.6" fill="none"/>
+          <circle cx="24" cy="24" r="6.2" stroke="var(--accent)" stroke-width="1.6" fill="none"/>
+          <path d="M24 4 V18 M24 30 V44 M7 13 L18.5 20.5 M41 13 L29.5 20.5 M7 33 L18.5 27.5 M41 33 L29.5 27.5" stroke="var(--accent)" stroke-width="1" opacity="0.55"/>
+        </svg>
+        <div class="wordwrap">
+          <span class="eyebrow">Link Decoder</span>
+          <h1>Grimoire</h1>
+          <p>Hand it a link. Get the whole story — deep and technical, or plain and simple.</p>
+        </div>
+      </a>
+    </div>
+    <nav class="toplinks" aria-label="Pages">
+      <a href="#home" class="navlink" data-nav="home">New Link</a>
+      <a href="#history" class="navlink" data-nav="history">Library <span class="navcount" id="navHistCount" style="display:none;"></span></a>
+      <a href="#guide" class="navlink" data-nav="guide">How it works</a>
+    </nav>
+  </header>
+
+  <!-- ============ PAGE: Home ============ -->
+  <section class="page" id="page-home">
+    <div class="hero">
+      <h2 class="hero-title">Every link<br>has a story.</h2>
+      <p class="hero-sub">Drop in a GitHub repo or a website and Grimoire reasons out what it is, how it was built, and how it runs — then draws the architecture and the flow. Flip the switch for the full technical read, or the plain-language one.</p>
+    </div>
+    <div class="input-card">
+      <div class="provider-panel">
+        <div class="provider-grid">
+          <label class="provider-field">
+            <span>AI provider</span>
+            <select id="providerSelect" aria-label="AI provider">
+              <option value="gemini">Google Gemini</option>
+              <option value="groq">Groq</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="openai">OpenAI</option>
+              <option value="mistral">Mistral</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </label>
+          <label class="provider-field">
+            <span>Model ID <small>editable</small></span>
+            <input type="text" id="modelInput" autocomplete="off" spellcheck="false" />
+          </label>
+        </div>
+        <div class="apikey-row">
+          <input type="password" id="apiKey" placeholder="Enter your API key" autocomplete="off" />
+          <a class="key-link" id="keyLink" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Get API key ↗</a>
+        </div>
+        <div class="provider-note" id="providerNote" aria-live="polite"></div>
+      </div>
+      <div class="input-hint key-hint">Each provider's key and model choice are saved separately in this browser. Keys are sent only to the provider you select. API billing and free-tier limits are controlled by that provider. Do not use this client-side page with keys you cannot afford to expose; a public deployment needs a secure backend.</div>
+      <div class="input-row">
+        <input type="text" id="linkInput" placeholder="Paste a GitHub repo or website link — e.g. github.com/user/repo" />
+        <button class="btn primary" id="decodeBtn">Decode</button>
+      </div>
+      <button class="context-toggle" id="contextToggle" type="button">+ Add context (README, package.json, a code snippet — optional, improves accuracy)</button>
+      <textarea id="context" placeholder="Paste anything about the project here if you have it — this helps when the link alone isn't enough to go on."></textarea>
+      <div class="input-hint">Grimoire reasons from what your selected AI model already knows about the link plus anything you paste in — it can't browse out to the live page itself, so for obscure or very new projects, pasting a README or a few files gets a far sharper read. Tip: press <b>/</b> anywhere on this page to jump to the link field.</div>
+      <div class="status-line" id="status"><span class="spinner"></span><span id="statusText"></span></div>
+    </div>
+
+    <div class="recent-strip" id="recentStrip" style="display:none;">
+      <div class="recent-strip-head">Recently decoded</div>
+      <div class="recent-row" id="recentRow"></div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: Result ============ -->
+  <section class="page" id="page-result">
+    <button class="back-link" id="backFromResult" type="button">← Back</button>
+    <div class="result-head">
+      <div class="result-title">
+        <span class="eyebrow">Decoded</span>
+        <h2 id="rName">—</h2>
+        <p class="tagline" id="rTagline"></p>
+        <div class="chips" id="rChips"></div>
+      </div>
+      <div class="result-side">
+        <div class="switch" role="group" aria-label="Explanation mode" data-active="magic">
+          <div class="switch-thumb" aria-hidden="true"></div>
+          <button id="btnMuggle" type="button">Muggle London</button>
+          <button id="btnMagic" type="button" class="active">Wizard-born</button>
+        </div>
+        <div class="result-actions">
+          <button class="btn ghost small" id="regenBtn" type="button" title="Ask the AI to decode this link again">↻ Regenerate</button>
+          <button class="btn ghost small" id="copyMdBtn" type="button" title="Copy this result as Markdown">⧉ Copy as Markdown</button>
+          <button class="btn ghost small" id="downloadJsonBtn" type="button" title="Download the raw decoded data">⇣ Download JSON</button>
+        </div>
+        <span id="resultFlash" style="font-size:12.5px;color:var(--accent);opacity:0;transition:opacity .3s ease;"></span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="stagger">
+        <div class="card">
+          <p class="card-eyebrow">Overview</p>
+          <h3 id="t1">What it is</h3>
+          <p id="rOverview"></p>
+        </div>
+        <div class="card">
+          <p class="card-eyebrow">Build</p>
+          <h3 id="t2">How it was built</h3>
+          <p id="rBuilt"></p>
+        </div>
+        <div class="card">
+          <p class="card-eyebrow">Runtime</p>
+          <h3 id="t3">How it works</h3>
+          <p id="rWorks"></p>
+          <div class="callout" id="analogyBox" style="display:none;">
+            <b>Think of it like this —</b> <span id="rAnalogy"></span>
+          </div>
+        </div>
+        <div class="card" id="deepCard">
+          <p class="card-eyebrow">Deep dive</p>
+          <h3>Notable details</h3>
+          <ul class="deep-list" id="rDeep"></ul>
+        </div>
+      </div>
+      <div class="stagger">
+        <div class="card diagram-card">
+          <p class="card-eyebrow">Diagram</p>
+          <h3>Architecture</h3>
+          <div class="svgwrap" id="archWrap"></div>
+        </div>
+        <div class="card diagram-card">
+          <p class="card-eyebrow">Diagram</p>
+          <h3>Flow</h3>
+          <div class="svgwrap" id="flowWrap"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: History ============ -->
+  <section class="page" id="page-history">
+    <div class="result-head">
+      <div class="result-title">
+        <h2>Your library</h2>
+        <p class="tagline">Your decoded projects, saved in this browser. Open any entry to pick up where you left off.</p>
+      </div>
+      <button class="btn ghost" id="clearHistoryBtn" type="button">Clear history</button>
+    </div>
+    <div id="historyList" class="history-list"></div>
+    <div class="empty-state" id="historyEmpty" style="display:none;">Nothing decoded yet. <a href="#home">Decode your first link</a>.</div>
+  </section>
+
+  <!-- ============ PAGE: Guide ============ -->
+  <section class="page" id="page-guide">
+    <div class="guide-hero">
+      <span class="eyebrow">The field guide</span>
+      <h2 class="hero-title">A little less mystery.<br>A lot more clarity.</h2>
+      <p class="hero-sub">Grimoire turns a project link into an explorable technical briefing. Here is how to get a useful reading without pretending an AI can magically inspect every repository.</p>
+    </div>
+    <div class="guide-grid">
+      <article class="card guide-card"><span class="guide-number">01</span><p class="card-eyebrow">Start with a link</p><h3>Bring a project</h3><p>Paste a GitHub repository or website URL on the New Link page. A clear, public project name gives the model a better starting point.</p></article>
+      <article class="card guide-card"><span class="guide-number">02</span><p class="card-eyebrow">Add evidence</p><h3>Give it context</h3><p>README text, package files, architecture notes, or a short code excerpt can improve the explanation, especially for new or obscure projects.</p></article>
+      <article class="card guide-card"><span class="guide-number">03</span><p class="card-eyebrow">Explore the result</p><h3>Switch perspectives</h3><p>Use Wizard-born for technical detail or Muggle London for a plain-language explanation. Architecture and flow diagrams update with the selected mode. Use Regenerate if a reading feels off, or Copy as Markdown / Download JSON to keep a copy.</p></article>
+      <article class="card guide-card"><span class="guide-number">04</span><p class="card-eyebrow">Keep your work</p><h3>Return any time</h3><p>Your recent decodes are saved in this browser. Open the Library to revisit them without spending another API request.</p></article>
+    </div>
+    <div class="card guide-note">
+      <p class="card-eyebrow">A useful limitation</p>
+      <h3>AI explanations are a starting point, not source-code verification.</h3>
+      <p>Grimoire sends the link and any context you provide to the AI provider you select. It does not crawl the live repository itself, so verify important implementation details against the actual source before relying on them.</p>
+      <a class="btn primary guide-cta" href="#home">Decode a project <span aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+
+  <footer class="foot">Grimoire asks your selected AI provider to read the link and reason it out — double-check anything load-bearing against the real source. Runs entirely in your browser; your API key never leaves it.</footer>
+</div>
+
+<script src="js/state.js"></script>
+<script src="js/background.js"></script>
+<script src="js/diagrams.js"></script>
+<script src="js/history.js"></script>
+<script src="js/router.js"></script>
+<script src="js/providers.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
+<script src="js/motion.js"></script>
+</body>
+</html>
