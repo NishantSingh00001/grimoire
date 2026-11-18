@@ -39,3 +39,33 @@ there isn't one. But it also means:
   push and pull request for accidentally committed secrets.
 - `CLAUDE.md` carries a standing security-rules block so any AI-assisted
   changes to this repo keep following the same rules.
+
+## 20-point pen-test checklist (2026-11-18)
+
+Static, client-only, hash-routed app — no server, database, auth system, GraphQL, WebSockets,
+SAML, or XML parsing. 19/20 don't apply for that reason.
+
+| # | Check | Applies? | Finding |
+|---|---|---|---|
+| 1 | HTTP/2 Rapid Reset | No | No server of our own. |
+| 2 | bcrypt 72-byte limit | No | No password hashing. |
+| 3 | SAML signature bypass | No | No SAML. |
+| 4 | nOAuth | No | No OAuth login. |
+| 5 | GraphQL alias batching | No | No GraphQL. |
+| 6 | TOTP replay | No | No 2FA. |
+| 7 | ReDoS | No | The one regex that runs on AI-returned text (`/```(?:json)?\s*([\s\S]*?)```/i` in `app.js`, stripping a markdown code fence) uses a lazy quantifier with no nested repetition — not vulnerable to catastrophic backtracking. |
+| 8 | JWT algorithm confusion | No | No JWTs. |
+| 9 | HTTP request smuggling | No | No proxy/load balancer of our own. |
+| 10 | Web cache poisoning | No | Static assets only, cached by URL. |
+| 11 | Spoofed X-Forwarded-For | No | No server-side rate limiting — the only "rate limit" is the visitor's own API key quota with their provider. |
+| 12 | Postgres views / RLS | No | No database. |
+| 13 | Math.random() for security tokens | No | `Math.random()` is used only for the decorative background-skyline animation (`background.js`). There's no auth, session, or access token anywhere in the app for this to matter to. |
+| 14 | Timing attacks on secret comparison | No | No secret comparison happens in this code — the visitor's API key is sent straight to the provider's own endpoint, never compared against anything locally. |
+| 15 | Padding oracle | No | No encryption of cookies/tokens. |
+| 16 | Server-side prototype pollution | No | No server. |
+| 17 | Server-side template injection | No | No templating of any kind — `render.js` writes every AI-returned field with `textContent`/`createElement`, never `innerHTML`, so model output can't inject markup either. |
+| 18 | XXE | No | No XML parsing. |
+| 19 | Cross-site WebSocket hijacking | No | No WebSockets. |
+| 20 | Unicode username normalization | No | No usernames/accounts. |
+
+No fixes needed — nothing applicable needed one.
